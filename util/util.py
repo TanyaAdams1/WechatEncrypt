@@ -1,4 +1,5 @@
 import pyqrcode
+from PIL import Image
 from cryptography.fernet import Fernet
 from reportlab.lib.validators import isCallable
 
@@ -46,14 +47,16 @@ def decrypt(data, key):
 
 
 class MyWXBot(WXBot):
-    def __init__(self):
-        WXBot.__init__(self)
+    def __init__(self, logincallback=None):
+        super().__init__()
         self.callbacks = []
         self.qr_file_path = None
+        self.inited = False
+        self.logincallback = logincallback
 
     def add_callback(self, condition, function):
         if isCallable(condition) and isCallable(function):
-            self.callbacks.append({condition: function})
+            self.callbacks.append((condition, function))
 
     def handle_msg_all(self, msg):
         for callback in self.callbacks:
@@ -65,8 +68,17 @@ class MyWXBot(WXBot):
         qr = pyqrcode.create(string)
         if self.conf['qr'] == 'png':
             qr.png(qr_file_path, scale=8)
-            # img = Image.open(qr_file_path)
-            # img.show()
+            img = Image.open(qr_file_path)
+            img.show()
         elif self.conf['qr'] == 'tty':
             print(qr.terminal(quiet_zone=1))
         self.qr_file_path = qr_file_path
+
+    def run(self):
+        if not self.login():
+            return False
+
+        self.status_notify()
+        if self.get_contact():
+            self.logincallback()
+        self.proc_msg()
