@@ -1,10 +1,10 @@
 from multiprocessing import Queue
 
-from reportlab.lib.validators import isCallable
-
 from chatlog.chatlog import *
+from util.util import *
 
 
+# TODO: Fix view message
 class Interface:
     def __init__(self, send_callback=None, contact=[]):
         self.log = Chatlog(contact=contact)
@@ -26,10 +26,10 @@ class Interface:
                       id_list,
                       '\n')
             else:
-                for msg in self.log.get_msg_by_id(id_list):
+                for msg in self.log.get_msg_by_id(id_list[0]):
                     print('%s:\n\t%s\n' % (msg['name'], msg['content']))
 
-    def send_msg(self, data, dst):
+    def send_msg(self, data, dst, crypt=False):
         if not str(dst).isnumeric():
             dst = self.log.get_id_by_name(dst)
             if len(dst) == 0:
@@ -40,10 +40,15 @@ class Interface:
                       dst,
                       '\n')
                 return False
+            else:
+                dst = dst[0]
+        if crypt:
+            data = decode(self.log.fer.encrypt(encode(data)))
         try:
-            self.send(data, dst)
+            return self.send(data, dst)
         except AttributeError:
             print('Error: No valid callback inserted')
+            return False
 
 
     def main_loop(self):
@@ -63,7 +68,18 @@ class Interface:
             elif choice == '2':
                 data = input('Input message to send:')
                 dst = input('Input destiny:')
-                self.send_msg(data, dst)
+                while True:
+                    _crypt = input('Encrypt?(y/n):')
+                    if _crypt.lower() == 'y':
+                        _crypt = True
+                        break
+                    elif _crypt.lower() == 'n':
+                        _crypt = False
+                        break
+                    else:
+                        print('Invalid input\n')
+                if not self.send_msg(data, dst, crypt=_crypt):
+                    print('Error: Message not sent')
             elif choice == '3':
                 self.log.print_contacts()
             elif choice == '4':
