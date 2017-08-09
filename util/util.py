@@ -79,6 +79,11 @@ class MyWXBot(WXBot):
             return False
 
         self.status_notify()
-        if self.get_contact():
-            self.logincallback()
+        self.get_contact()
         self.proc_msg()
+
+    def handle_msg(self, r):
+        super().handle_msg(r)
+        for msg in r['AddMsgList']:
+            if msg['MsgType'] == 51 and msg['StatusNotifyCode'] == 4:
+                self.logincallback()

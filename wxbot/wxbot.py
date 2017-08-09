@@ -98,7 +98,7 @@ class WXBot:
         self.sync_key_str = ''
         self.sync_key = []
         self.sync_host = ''
-
+        self.normal_contact_list = []
         self.batch_count = 50  # 一次拉取50个联系人的信息
         self.full_user_name_list = []  # 直接获取不到通讯录时，获取的username列表
         self.wxid_list = []  # 获取到的wxid的列表
@@ -181,12 +181,6 @@ class WXBot:
                          'weixinreminder', 'wxid_novlwrv3lqwv11', 'gh_22b87fa7cb3c',
                          'officialaccounts', 'notification_messages', 'wxid_novlwrv3lqwv11',
                          'gh_22b87fa7cb3c', 'wxitil', 'userexperience_alarm', 'notification_messages']
-
-        self.contact_list = []
-        self.public_list = []
-        self.special_list = []
-        self.group_list = []
-
         for contact in self.member_list:
             if contact['VerifyFlag'] & 8 != 0:  # 公众号
                 self.public_list.append(contact)
@@ -249,11 +243,6 @@ class WXBot:
                          'weixinreminder', 'wxid_novlwrv3lqwv11',
                          'officialaccounts',
                          'gh_22b87fa7cb3c', 'wxitil', 'userexperience_alarm', 'notification_messages', 'notifymessage']
-
-        self.contact_list = []
-        self.public_list = []
-        self.special_list = []
-        self.group_list = []
         for i, contact in enumerate(self.member_list):
             if contact['VerifyFlag'] & 8 != 0:  # 公众号
                 self.public_list.append(contact)
@@ -686,7 +675,8 @@ class WXBot:
                 msg_type_id = 0
                 user['name'] = 'system'
                 # 会获取所有联系人的username 和 wxid，但是会收到3次这个消息，只取第一次
-                if self.is_big_contact and len(self.full_user_name_list) == 0:
+                if len(self.full_user_name_list) == 0:
+                    # TODO: Solve when wxid_list is empty
                     self.full_user_name_list = msg['StatusNotifyUserName'].split(",")
                     self.wxid_list = re.search(r"username&gt;(.*?)&lt;/username", msg["Content"]).group(1).split(",")
                     with open(os.path.join(self.temp_pwd, 'UserName.txt'), 'w') as f:
@@ -695,6 +685,7 @@ class WXBot:
                         f.write(json.dumps(self.wxid_list))
                     log.info('Contact list is too big. Now start to fetch member list .')
                     self.get_big_contact()
+
 
             elif msg['MsgType'] == 37:  # friend request
                 msg_type_id = 37
