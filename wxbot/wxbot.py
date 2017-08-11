@@ -99,9 +99,10 @@ class WXBot:
         self.sync_key = []
         self.sync_host = ''
         self.normal_contact_list = []
+        self.full_member_list = []
         self.batch_count = 50  # 一次拉取50个联系人的信息
         self.full_user_name_list = []  # 直接获取不到通讯录时，获取的username列表
-        self.wxid_list = []  # 获取到的wxid的列表
+        #        self.wxid_list = []  # 获取到的wxid的列表
         self.cursor = 0  # 拉取联系人信息的游标
         self.is_big_contact = False  # 通讯录人数过多，无法直接获取
         # 文件缓存目录
@@ -155,8 +156,6 @@ class WXBot:
 
     def get_contact(self):
         """获取当前账户的所有相关账号(包括联系人、公众号、群聊、特殊账号)"""
-        if self.is_big_contact:
-            return False
         url = self.base_uri + '/webwxgetcontact?pass_ticket=%s&skey=%s&r=%s' \
                               % (self.pass_ticket, self.skey, int(time.time()))
 
@@ -182,6 +181,8 @@ class WXBot:
                          'officialaccounts', 'notification_messages', 'wxid_novlwrv3lqwv11',
                          'gh_22b87fa7cb3c', 'wxitil', 'userexperience_alarm', 'notification_messages']
         for contact in self.member_list:
+            self.normal_contact_list.append(contact['UserName'])
+            self.full_member_list.append(contact)
             if contact['VerifyFlag'] & 8 != 0:  # 公众号
                 self.public_list.append(contact)
                 self.account_info['normal_member'][contact['UserName']] = {'type': 'public', 'info': contact}
@@ -230,7 +231,7 @@ class WXBot:
         while self.cursor < total_len:
             cur_batch = self.full_user_name_list[self.cursor:(self.cursor + self.batch_count)]
             self.cursor += self.batch_count
-            cur_batch = map(map_username_batch, cur_batch)
+            cur_batch = list(map(map_username_batch, cur_batch))
             user_info_list += self.batch_get_contact(cur_batch)
             log.info("Get batch contacts")
 
@@ -244,20 +245,22 @@ class WXBot:
                          'officialaccounts',
                          'gh_22b87fa7cb3c', 'wxitil', 'userexperience_alarm', 'notification_messages', 'notifymessage']
         for i, contact in enumerate(self.member_list):
-            if contact['VerifyFlag'] & 8 != 0:  # 公众号
-                self.public_list.append(contact)
-                self.account_info['normal_member'][contact['UserName']] = {'type': 'public', 'info': contact}
-            elif contact['UserName'] in special_users or self.wxid_list[i] in special_users:  # 特殊账户
-                self.special_list.append(contact)
-                self.account_info['normal_member'][contact['UserName']] = {'type': 'special', 'info': contact}
-            elif contact['UserName'].find('@@') != -1:  # 群聊
-                self.group_list.append(contact)
-                self.account_info['normal_member'][contact['UserName']] = {'type': 'group', 'info': contact}
-            elif contact['UserName'] == self.my_account['UserName']:  # 自己
-                self.account_info['normal_member'][contact['UserName']] = {'type': 'self', 'info': contact}
-            else:
-                self.contact_list.append(contact)
-                self.account_info['normal_member'][contact['UserName']] = {'type': 'contact', 'info': contact}
+            if not contact['UserName'] in self.normal_contact_list:
+                self.full_member_list.append(contact)
+                if contact['VerifyFlag'] & 8 != 0:  # 公众号
+                    self.public_list.append(contact)
+                    self.account_info['normal_member'][contact['UserName']] = {'type': 'public', 'info': contact}
+                    #            elif contact['UserName'] in special_users or self.wxid_list[i] in special_users:  # 特殊账户
+                    self.special_list.append(contact)
+                    self.account_info['normal_member'][contact['UserName']] = {'type': 'special', 'info': contact}
+                elif contact['UserName'].find('@@') != -1:  # 群聊
+                    self.group_list.append(contact)
+                    self.account_info['normal_member'][contact['UserName']] = {'type': 'group', 'info': contact}
+                elif contact['UserName'] == self.my_account['UserName']:  # 自己
+                    self.account_info['normal_member'][contact['UserName']] = {'type': 'self', 'info': contact}
+                else:
+                    self.contact_list.append(contact)
+                    self.account_info['normal_member'][contact['UserName']] = {'type': 'contact', 'info': contact}
         group_members = {}
         encry_chat_room_id = {}
         for group in self.group_list:
@@ -678,11 +681,11 @@ class WXBot:
                 if len(self.full_user_name_list) == 0:
                     # TODO: Solve when wxid_list is empty
                     self.full_user_name_list = msg['StatusNotifyUserName'].split(",")
-                    self.wxid_list = re.search(r"username&gt;(.*?)&lt;/username", msg["Content"]).group(1).split(",")
+                    #                    self.wxid_list = re.search(r"username&gt;(.*?)&lt;/username", msg["Content"]).group(1).split(",")
                     with open(os.path.join(self.temp_pwd, 'UserName.txt'), 'w') as f:
                         f.write(msg['StatusNotifyUserName'])
-                    with open(os.path.join(self.temp_pwd, 'wxid.txt'), 'w') as f:
-                        f.write(json.dumps(self.wxid_list))
+                    #                    with open(os.path.join(self.temp_pwd, 'wxid.txt'), 'w') as f:
+                    #                        f.write(json.dumps(self.wxid_list))
                     log.info('Contact list is too big. Now start to fetch member list .')
                     self.get_big_contact()
 

@@ -16,4 +16,4 @@ class Daemon:
         self.interface.main_loop()
 
     def _init(self):
-        self.interface.contact_queue.put(self.bot.member_list)
+        self.interface.contact_queue.put(self.bot.full_member_list)
