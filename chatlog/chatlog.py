@@ -15,8 +15,8 @@ DEFAULT_SALT = b'SALT'
 
 class Chatlog:
     def __init__(self, contact=[]) -> chatlog:
-        self.lock = Lock()
-        self.log = []
+        self.msg_lock = Lock()
+        self.log = {}
         self.contact = contact
         temp_pwd = os.path.join(os.getcwd(), 'temp')
         conf_path = os.path.join(temp_pwd, 'config.ini')
@@ -69,13 +69,29 @@ class Chatlog:
         return False
 
     def add_msg(self, msg):
-        if Chatlog.is_plain_text(msg):
-            self.lock.acquire()
-            self.log.append(msg)
-            self.lock.release()
+        try:
+            msg['content']['data'] = self.fer.decrypt(str.encode(
+                msg['content']['data']
+            ))
+        except:
+            pass
+        self.msg_lock.acquire()
+        if not msg['user']['id'] in self.log:
+            self.log[msg['user']['id']] = ''
+        if msg['msg_type_id'] == 3:
+            self.log[msg['user']['id']] += 'Name:%s\n%s\n' \
+                                           % (msg['content']['user']['name'],
+                                              msg['content']['data'])
+        elif msg['msg_type_id'] == 4:
+            self.log[msg['user']['id']] += 'Name:%s\n%s\n' \
+                                           % (msg['user']['name'],
+                                              msg['content']['data'])
+        elif msg['msg_type_id'] == 1:
+            pass
+        # TODO: Fix this
+        self.msg_lock.release()
 
     def get_msg_by_id(self, id):
-        result = []
         flag = False
         for contact in self.contact:
             if id == contact['UserName']:
@@ -83,21 +99,12 @@ class Chatlog:
                 break
         if not flag:
             id = self.get_id_by_name(id)
-        self.lock.acquire()
-        for msg in self.log:
-            if msg['user']['id'] == str(id):
-                if not msg['content']['data'].find('gAAAA') == -1:
-                    msg['content']['data'] = bytes.decode(self.fer.decrypt(
-                        str.encode(msg['content']['data'])))
-                if msg['msg_type_id'] == 3:
-                    result.append({'name': msg['content']['user']['name'],
-                                   'content': msg['content']['data']})
-                elif msg['msg_type_id'] == 4:
-                    result.append({'name': msg['user']['name'],
-                                   'content': msg['content']['data']})
-                else:
-                    result.append({'name': msg['user']['name']})
-        self.lock.release()
+        self.msg_lock.acquire()
+        try:
+            result = self.log[id]
+        except:
+            result = 'None.\n'
+        self.msg_lock.release()
         return result
 
     def get_id_by_name(self, name):
@@ -113,4 +120,4 @@ class Chatlog:
 
     def print_contacts(self):
         for contact in self.contact:
-            print('Nickname:', contact['NickName'], '\t\t\tRemarkName:', contact['RemarkName'])
+            print('Nickname:', contact['NickName'], '\nRemarkName:', contact['RemarkName'])

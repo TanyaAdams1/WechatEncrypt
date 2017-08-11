@@ -26,8 +26,7 @@ class Interface:
                       id_list,
                       '\n')
             else:
-                for msg in self.log.get_msg_by_id(id_list[0]):
-                    print('%s:\n\t%s\n' % (msg['name'], msg['content']))
+                print(self.log.get_msg_by_id(id_list[0]))
 
     def send_msg(self, data, dst, crypt=False):
         if not str(dst).isnumeric():

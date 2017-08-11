@@ -59,6 +59,7 @@ class MyWXBot(WXBot):
             self.callbacks.append((condition, function))
 
     def handle_msg_all(self, msg):
+        print(msg, '\n')
         for callback in self.callbacks:
             if callback[0](msg):
                 callback[1](msg)
