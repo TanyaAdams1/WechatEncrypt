@@ -1,13 +1,13 @@
 from multiprocessing import Queue
+from os import _exit
 
 from chatlog.chatlog import *
 from util.util import *
 
 
-# TODO: Fix view message
 class Interface:
     def __init__(self, send_callback=None, contact=[]):
-        self.log = Chatlog(contact=contact)
+        self.log = Chatlog(contact=contact, send_callback=send_callback)
         self.login = False
         self.contact_queue = Queue()
         if isCallable(send_callback):
@@ -44,7 +44,7 @@ class Interface:
         if crypt:
             data = decode(self.log.fer.encrypt(encode(data)))
         try:
-            return self.send(data, dst)
+            return self.log.send_msg_by_id(msg=data, id=dst)
         except AttributeError:
             print('Error: No valid callback inserted')
             return False
@@ -82,8 +82,6 @@ class Interface:
             elif choice == '3':
                 self.log.print_contacts()
             elif choice == '4':
-                quit(0)
+                _exit(0)
             else:
                 print('Error: Invalid input')
-
-                # TODO: Implement image, voice and video

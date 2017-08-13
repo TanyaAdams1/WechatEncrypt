@@ -3,21 +3,22 @@ from base64 import urlsafe_b64encode
 from configparser import ConfigParser, NoSectionError, NoOptionError
 from multiprocessing import Lock
 
+from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 import chatlog
-from util.util import *
 
 DEFAULT_PASWD = '12345678'
 DEFAULT_SALT = b'SALT'
 
 
 class Chatlog:
-    def __init__(self, contact=[]) -> chatlog:
+    def __init__(self, contact=[], send_callback=None) -> chatlog:
         self.msg_lock = Lock()
         self.log = {}
         self.contact = contact
+        self.send_callback = send_callback
         temp_pwd = os.path.join(os.getcwd(), 'temp')
         conf_path = os.path.join(temp_pwd, 'config.ini')
         if not os.path.exists(conf_path):
@@ -70,25 +71,39 @@ class Chatlog:
 
     def add_msg(self, msg):
         try:
-            msg['content']['data'] = self.fer.decrypt(str.encode(
+            msg['content']['data'] = bytes.decode(self.fer.decrypt(str.encode(
                 msg['content']['data']
-            ))
+            )))
         except:
             pass
         self.msg_lock.acquire()
-        if not msg['user']['id'] in self.log:
+        if not msg['msg_type_id'] == 1 and not msg['user']['id'] in self.log:
             self.log[msg['user']['id']] = ''
         if msg['msg_type_id'] == 3:
-            self.log[msg['user']['id']] += 'Name:%s\n%s\n' \
+            self.log[msg['user']['id']] += '%s:\n%s\n' \
                                            % (msg['content']['user']['name'],
                                               msg['content']['data'])
         elif msg['msg_type_id'] == 4:
-            self.log[msg['user']['id']] += 'Name:%s\n%s\n' \
+            self.log[msg['user']['id']] += '%s:\n%s\n' \
                                            % (msg['user']['name'],
                                               msg['content']['data'])
         elif msg['msg_type_id'] == 1:
-            pass
-        # TODO: Fix this
+            id = msg['to_user_id']
+            name = id
+            for contact in self.contact:
+                try:
+                    if id == contact['UserName']:
+                        if 'RemarkName' in contact:
+                            name = contact['RemarkName']
+                        elif 'NickName' in contact:
+                            name = contact['NickName']
+                        elif 'DisplayName' in contact:
+                            name = contact['DisplayName']
+                except:
+                    pass
+            if not id in self.log:
+                self.log[id] = ''
+            self.log[id] += 'Self:\n%s\n' % (msg['content']['data'])
         self.msg_lock.release()
 
     def get_msg_by_id(self, id):
@@ -121,3 +136,19 @@ class Chatlog:
     def print_contacts(self):
         for contact in self.contact:
             print('Nickname:', contact['NickName'], '\nRemarkName:', contact['RemarkName'])
+
+    def send_msg_by_id(self, msg, id):
+        with self.msg_lock:
+            if not id in self.log:
+                self.log[id] = ''
+            try:
+                _msg = bytes.decode(
+                    self.fer.decrypt(str.encode(msg))
+                )
+            except:
+                _msg = msg
+            self.log[id] += 'Self:\n%s\n' % (_msg)
+            try:
+                return self.send_callback(msg, id)
+            except:
+                return False

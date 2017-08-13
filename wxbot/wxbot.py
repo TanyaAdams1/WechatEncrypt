@@ -679,7 +679,6 @@ class WXBot:
                 user['name'] = 'system'
                 # 会获取所有联系人的username 和 wxid，但是会收到3次这个消息，只取第一次
                 if len(self.full_user_name_list) == 0:
-                    # TODO: Solve when wxid_list is empty
                     self.full_user_name_list = msg['StatusNotifyUserName'].split(",")
                     #                    self.wxid_list = re.search(r"username&gt;(.*?)&lt;/username", msg["Content"]).group(1).split(",")
                     with open(os.path.join(self.temp_pwd, 'UserName.txt'), 'w') as f:
